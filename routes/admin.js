@@ -1,8 +1,9 @@
 const Router=require("express"); 
 const adminRouter=Router(); 
-const {adminModel,userModel}=require("../db") 
+const {adminModel,userModel, courseModel}=require("../db") 
 const jwt=require("jsonwebtoken"); 
-const JWT_SECRET="admincsa";  
+const {JWT_ADMIN_PASSWORD}=require("../config");  
+const { adminMiddleware } = require("../middleware/admin");
     adminRouter.post("/signup",async(req,res)=>{  
         const email=req.body.email; 
         const password=req.body.password; 
@@ -32,7 +33,7 @@ const JWT_SECRET="admincsa";
                if(admin){ 
                      const token=jwt.sign({ 
                        id:admin._id
-                     },JWT_SECRET); 
+                     },JWT_ADMIN_PASSWORD); 
                      /// cookie based auth can be added here 
                      res.json({ 
                        token:token,
@@ -46,22 +47,53 @@ const JWT_SECRET="admincsa";
        
     }); 
     
-    adminRouter.post("/course",function(req,res){ 
+    adminRouter.post("/course",adminMiddleware,async function(req,res){  
+        const adminId=req.userId; 
+        const {title,description,imageUrl,price}=req.body; 
+         const course=await courseModel.create({ 
+            title,
+            description,
+            imageUrl,
+            price,
+            creatorId:adminId       
+         });
          res.json({ 
-            msg:"admin signin endpoint"
+            msg:"course added", 
+            courseId:course._id 
         })
     })
-    adminRouter.put("/course",function(req,res){ 
+    adminRouter.put("/course",adminMiddleware, async function(req,res){ 
+        const adminId=req.userId; 
+        const {title,description,imageUrl,price,courseId}=req.body; 
+         const course=await courseModel.updateOne({
+            _id:courseId,
+            creatorId:adminId // only the admin can change this only if creatorid is same as admin id 
+         },{ 
+            title,
+            description,
+            imageUrl,
+            price
+         });
          res.json({ 
-            msg:"admin signin endpoint"
+            msg:"course updated", 
+            courseId:course._id 
         })
     })
-    adminRouter.get("/course/bulk",function(req,res){ 
+    adminRouter.get("/course/bulk",adminMiddleware,async function(req,res){  
+        const adminId=req.userId; 
+        const courses = await courseModel.find({ 
+           creatorId:adminId
+        })
          res.json({ 
-            msg:"admin signin endpoint"
+            msg:"admin signin endpoint",
+            courses:courses
         })
     })
 
 module.exports={ 
     adminRouter:adminRouter
 }
+
+/// both JWT_ADMIN_PASSWORD for user and admin should be different 
+/// bcoz these are diff databases their _id becomes then their token will be same
+/// when this token is send to admin,some user can hit the admin end point with same token 

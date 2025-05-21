@@ -1,9 +1,10 @@
 const express=require('express'); 
 const Router=express.Router;
 const userRouter = Router(); 
-const {adminModel,userModel}=require("../db") 
+const {adminModel,userModel, purchaseModel, courseModel}=require("../db") 
 const jwt=require("jsonwebtoken"); 
-const JWT_SECRET="usercsa"; 
+const {JWT_USER_PASSWORD}=require("../config"); 
+const { userMiddleware } = require('../middleware/user');
 
 
     userRouter.post("/signup",async (req,res)=>{ 
@@ -35,7 +36,7 @@ const JWT_SECRET="usercsa";
         if(user){ 
               const token=jwt.sign({ 
                 id:user._id
-              },JWT_SECRET); 
+              },JWT_USER_PASSWORD); 
               /// cookie based auth can be added here 
               res.json({ 
                 token:token,
@@ -48,9 +49,21 @@ const JWT_SECRET="usercsa";
        }
     });  
 
-    userRouter.get("/purchases",(req,res)=>{ 
+    userRouter.get("/purchases",userMiddleware,async (req,res)=>{  
+        const userId=req.userId; 
+        const purchases=await purchaseModel.find({ 
+            userId
+        }); 
+        let purchased_courses=[];
+        for(let i=0;i<purchases.length;i++){ 
+           purchased_courses.push(purchases[i].courseId); 
+        } 
+        const courseData=await courseModel.find({ 
+            _id:{$in: purchased_courses }
+        })
         res.json({ 
-            msg:"user purchases endpoint"
+           purchases,
+           courseData
         })
     });  
 

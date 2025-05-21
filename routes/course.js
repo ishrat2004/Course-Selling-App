@@ -1,15 +1,23 @@
 const {Router}=require("express"); 
+const { userMiddleware } = require("../middleware/user");
+const { courseModel, purchaseModel } = require("../db");
 const courseRouter=Router(); 
 
-    courseRouter.get("/purchase",(req,res)=>{ 
+    courseRouter.get("/purchase",userMiddleware,async (req,res)=>{ 
+        const userId=req.userId; 
+        const courseId=req.body.courseId; 
+        await purchaseModel.create({ 
+            userId,courseId
+        })
         res.json({ 
-            msg:"course purchase  endpoints"
+            msg:"user purchases endpoint"
         })
     }); 
 
-    courseRouter.get("/preview",(req,res)=>{
+    courseRouter.get("/preview",async  (req,res)=>{ 
+        const courses=await courseModel.find({}); 
         res.json({ 
-            msg:"course preview  endpoints"
+            courses
         })
     }); 
 module.exports={ 
